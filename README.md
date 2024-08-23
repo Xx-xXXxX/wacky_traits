@@ -1,2 +1,2 @@
-# my_tuple
-A pretty implementation of tuple
+# common_traits
+Defines some common traits

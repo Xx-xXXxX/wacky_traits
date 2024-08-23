@@ -1,12 +1,13 @@
 [package]
-name = "my_tuple"
+name = "wacky_traits"
 version = "0.1.0"
 edition = "2021"
 authors = ["XNTEABDSC"]
-description = "A pretty implementation of tuple"
-keywords=["tuple"]
-
+description = "Defines some traits"
+keywords=["traits"]
+repository = "https://github.com/Xx-xXXxX/wacky_traits"
+homepage="https://github.com/Xx-xXXxX/wacky_traits"
+license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wacky_traits={path="../wacky_traits"}
