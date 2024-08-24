@@ -5,19 +5,24 @@ use crate::mapper::Mapper;
 pub struct AsSelf;
 impl<T> Mapper<T> for AsSelf {
     type Output = T;
-    fn map(self,value:T)->Self::Output {value}
+    fn map(self,value:T)->(Self::Output,AsSelf) {(value,AsSelf)}
 }
 /// combine 2 map
 pub struct MapperMapper<TMapperA,TMapperB>(pub TMapperA,pub TMapperB);
 
-impl<'a,TMapperA,TMapperB,Input> Mapper<Input> for &'a MapperMapper<TMapperA,TMapperB>
-    where TMapperA:Mapper<Input>+Clone,
-    TMapperB:Mapper< <TMapperA as Mapper<Input>>::Output >+Clone
+impl<'a,TMapperA,TMapperB,Input> Mapper<Input> for MapperMapper<TMapperA,TMapperB>
+    where TMapperA:Mapper<Input>,
+    TMapperB:Mapper< <TMapperA as Mapper<Input>>::Output >
 {
     type Output=<TMapperB as Mapper< <TMapperA as Mapper<Input>>::Output >>::Output;
 
-    fn map(self,value:Input)->Self::Output {
-        self.1.clone().map(self.0.clone().map(value))
+    fn map(self,value:Input)->(Self::Output,Self) {
+
+        let (ma,mb)=(self.0,self.1);
+        let (v1,ma2)=ma.map(value);
+        let (v2,mb2)=mb.map(v1);
+        return (v2,MapperMapper(ma2,mb2));
+        //self.1.clone().map(self.0.clone().map(value))
     }
 }
 /*

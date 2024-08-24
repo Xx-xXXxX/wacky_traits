@@ -1,40 +1,44 @@
 use crate::{collector::*, mapper::Mapper};
 
 /// convert Fn(Input,Next)->Output into collector, with mapper T->T
+/// 
+/// FnCollector is Collector
 pub struct FnCollector<TFn>(pub TFn);
 
-impl<'a,T,TFn> Mapper<T> for &'a FnCollector<TFn> {
+impl<'a,T,TFn> Mapper<T> for FnCollector<TFn> {
     type Output=T;
-    fn map(self,value:T)->Self::Output {
-        value
+    fn map(self,value:T)->(Self::Output,Self) {
+        (value,self)
     }
 }
-impl<'a,Input,Next,Output,TFn> Collector<Input,Next> for &'a FnCollector<TFn>
+impl<'a,Input,Next,Output,TFn> Collector<Input,Next> for FnCollector<TFn>
     where TFn:Fn(Input,Next)->Output
 {
     type Output=Output;
 
-    fn collect(self,value:Input,next:Next)-><Self as Collector<Input,Next>>::Output {
-        (self.0)(value,next)
+    fn collect(mut self,value:Input,next:Next)->(<Self as Collector<Input,Next>>::Output,Self) {
+        ((self.0)(value,next),self)
     }
 }
 
 /// convert FnMut(Input,Next)->Output into collector, with mapper T->T
+/// 
+/// &'a mut FnMutCollector is Collector
 pub struct FnMutCollector<TFn>(pub TFn);
 
-impl<'a,T,TFn> Mapper<T> for &'a mut FnMutCollector<TFn> {
+impl<'a,T,TFn> Mapper<T> for FnMutCollector<TFn> {
     type Output=T;
-    fn map(self,value:T)->Self::Output {
-        value
+    fn map(self,value:T)->(Self::Output,Self) {
+        (value,self)
     }
 }
-impl<'a,Input,Next,Output,TFn> Collector<Input,Next> for &'a mut FnMutCollector<TFn>
+impl<'a,Input,Next,Output,TFn> Collector<Input,Next> for FnMutCollector<TFn>
     where TFn:FnMut(Input,Next)->Output
 {
     type Output=Output;
 
-    fn collect(self,value:Input,next:Next)-><Self as Collector<Input,Next>>::Output {
-        (self.0)(value,next)
+    fn collect(mut self,value:Input,next:Next)->(<Self as Collector<Input,Next>>::Output,Self) {
+        ((self.0)(value,next),self)
     }
 }
 /*
@@ -58,7 +62,9 @@ impl<'a,Input:ToString,TFn:Fn(String,String)->String> Collector<Input,String> fo
 } */
 
 /// combine a mapper and a collector together, use mapper to cover collector's value input
-pub struct MapCollector<TMapper:Clone,TCollector:Clone>(pub TMapper,pub TCollector);
+/// 
+/// &'a MapCollector is Collector
+pub struct MapperCollector<TMapper,TCollector>(pub TMapper,pub TCollector);
 /*
 impl<TMapper:Clone,TCollector:Clone> Clone for MapCollector<TMapper,TCollector> {
     fn clone(&self) -> Self {
@@ -66,25 +72,33 @@ impl<TMapper:Clone,TCollector:Clone> Clone for MapCollector<TMapper,TCollector> 
     }
 } */
 
-impl<'a,TMapper,TCollector,Input> Mapper<Input> for &'a MapCollector<TMapper,TCollector>
-    where TMapper:Mapper<Input>+Clone,
-    TCollector:Mapper< <TMapper as Mapper<Input>>::Output >+Clone
+impl<'a,TMapper,TCollector,Input> Mapper<Input> for MapperCollector<TMapper,TCollector>
+    where TMapper:Mapper<Input>,
+    TCollector:Mapper< <TMapper as Mapper<Input>>::Output >
 {
     type Output=< TCollector as Mapper< <TMapper as Mapper<Input>>::Output >>::Output;
 
-    fn map(self,value:Input)->Self::Output {
-        self.1.clone().map(self.0.clone().map(value))
+    fn map(self,value:Input)->(Self::Output,Self) {
+        let (ma,mb)=(self.0,self.1);
+        let (v1,ma2)=ma.map(value);
+        let (v2,mb2)=mb.map(v1);
+        return (v2,MapperCollector(ma2,mb2));
+        //self.1.clone().map(self.0.clone().map(value))
     }
 }
 
-impl <'a,TMapper,TCollector,Input,TNext> Collector<Input,TNext> for &'a MapCollector<TMapper,TCollector>
-    where TMapper:Mapper<Input>+Clone,
-    TCollector:Collector<<TMapper as Mapper<Input>>::Output,TNext>+Clone
+impl <'a,TMapper,TCollector,Input,TNext> Collector<Input,TNext> for MapperCollector<TMapper,TCollector>
+    where TMapper:Mapper<Input>,
+    TCollector:Collector<<TMapper as Mapper<Input>>::Output,TNext>
 {
     type Output= <TCollector as Collector<<TMapper as Mapper<Input>>::Output,TNext>>::Output ;
 
-    fn collect(self,value:Input,next:TNext)-><Self as Collector<Input,TNext>>::Output {
-        self.1.clone().collect(self.0.clone().map(value), next)
+    fn collect(self,value:Input,next:TNext)->(<Self as Collector<Input,TNext>>::Output,Self) {
+        //self.1.clone().collect(self.0.clone().map(value), next)
+        let (m,c)=(self.0,self.1);
+        let (v1,m2)=m.map(value);
+        let (r,c2)=c.collect(v1, next);
+        return (r,MapperCollector(m2,c2));
     }
 }
 
@@ -93,7 +107,7 @@ impl <'a,TMapper,TCollector,Input,TNext> Collector<Input,TNext> for &'a MapColle
 /// to support Mapper< Output=() >, visitor
 impl Mapper<()> for () {
     type Output=();
-    fn map(self,_value:())->Self::Output {()}
+    fn map(self,_value:())->(Self::Output,()) {((),())}
 }
 
 /// () are implemented as Collector, ((),()) -> ()
@@ -101,5 +115,5 @@ impl Mapper<()> for () {
 /// to support Mapper< Output=() >, visitor
 impl Collector<(),()> for () {
     type Output=();
-    fn collect(self,_value:(),_next:())->() {()}
+    fn collect(self,_value:(),_next:())->((),()) {((),())}
 }

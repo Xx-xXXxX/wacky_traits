@@ -7,17 +7,17 @@
 /// or, you can `impl Mapper for &'a YourType`
 pub trait Mapper<Input>{
     type Output;
-    fn map(self,value:Input)->Self::Output;
+    fn map(self,value:Input)->(Self::Output,Self);
 }
 
 /// Fn(Input)->Output is Mapper<Input>
 /// 
 /// due to this, rustc will say "no T:Mapper" as "expect Fn, found T"
-impl<Input,Output,TFn:Fn(Input)->Output> Mapper<Input> for TFn {
+impl<Input,Output,TFn:FnMut(Input)->Output> Mapper<Input> for TFn {
     type Output = Output;
     //type TOutput = TOut;
-    fn map(self,value:Input)->Self::Output {
-        self(value)
+    fn map(mut self,value:Input)->(Self::Output,Self) {
+        (self(value),self)
     }
 }
 

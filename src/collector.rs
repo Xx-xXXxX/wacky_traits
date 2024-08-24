@@ -4,7 +4,7 @@ use crate::mapper::Mapper;
 /// Mapper may used when reach the end of iterating when there no next should be given
 pub trait Collector<Input,Next>:Mapper<Input>{
     type Output;
-    fn collect(self,value:Input,next:Next)-><Self as Collector<Input,Next>>::Output;
+    fn collect(self,value:Input,next:Next)->(<Self as Collector<Input,Next>>::Output,Self);
 }
 
 /// to help Collector and get result
@@ -12,7 +12,7 @@ pub trait Collector<Input,Next>:Mapper<Input>{
 /// use collector to iterate values in it
 pub trait Collectable<TCollector> {
     type Output;
-    fn collected(self,collector:TCollector)->Self::Output;
+    fn collected(self,collector:TCollector)->(Self::Output,TCollector);
 }
 
 
