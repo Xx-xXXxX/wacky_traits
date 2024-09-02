@@ -16,7 +16,7 @@ impl<'a,Input,Next,Output,TFn> Collector<Input,Next> for FnCollector<TFn>
 {
     type Output=Output;
 
-    fn collect(mut self,value:Input,next:Next)->(<Self as Collector<Input,Next>>::Output,Self) {
+    fn collect(self,value:Input,next:Next)->(<Self as Collector<Input,Next>>::Output,Self) {
         ((self.0)(value,next),self)
     }
 }
